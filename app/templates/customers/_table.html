@@ -1,0 +1,15 @@
+<table class="min-w-full bg-white border rounded">
+  <thead>
+    <tr class="bg-gray-100">
+      <th class="p-2 text-left">Name</th>
+      <th class="p-2 text-left">Meter</th>
+      <th class="p-2 text-left">Period</th>
+      <th class="p-2 text-left">Action</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for c in customers %}
+    {% include "customers/_row.html" %}
+  {% endfor %}
+  </tbody>
+</table>

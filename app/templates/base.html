@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>{% block title %}Billing{% endblock %}</title>
+    <script
+      src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.6/dist/htmx.min.js"
+      integrity="sha384-Akqfrbj/HpNVo8k11SXBb6TlBWmXXlYQrCSqEWmyKJe+hDm3Z/B2WVG4smwBkRVm"
+      crossorigin="anonymous"
+    ></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  </head>
+  <body class="bg-gray-50 text-gray-900">
+    <header class="p-4 border-b bg-white">
+      <div class="container mx-auto flex gap-6">
+        <a href="/" class="font-semibold">Electricity Billing</a>
+        <a href="/imports">Import CSV</a>
+        <a href="/customers">Customers</a>
+      </div>
+    </header>
+    <main class="container mx-auto p-6">{% block content %}{% endblock %}</main>
+  </body>
+</html>

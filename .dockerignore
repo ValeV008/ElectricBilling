@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.env
+.vscode/
+.idea/
+.git/
+node_modules/
+app/static/output.css.map

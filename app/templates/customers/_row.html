@@ -1,0 +1,14 @@
+<tr id="cust-{{ c.id }}">
+  <td class="p-2">{{ c.name }}</td>
+  <td class="p-2">{{ c.meter_code }}</td>
+  <td class="p-2">{{ period_start }} – {{ period_end }}</td>
+  <td class="p-2">
+    <button class="px-2 py-1 bg-blue-600 text-white rounded"
+            hx-post="/invoices/{{ c.id }}"
+            hx-vals='{"period_start":"{{ period_start }}","period_end":"{{ period_end }}"}'
+            hx-target="#cust-{{ c.id }}"
+            hx-swap="outerHTML">
+      Generate invoice
+    </button>
+  </td>
+</tr>

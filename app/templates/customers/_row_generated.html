@@ -1,0 +1,10 @@
+<tr id="cust-{{ c.id }}" class="bg-green-50">
+  <td class="p-2">{{ c.name }}</td>
+  <td class="p-2">{{ c.meter_code }}</td>
+  <td class="p-2">{{ period_start }} – {{ period_end }}</td>
+  <td class="p-2">
+    <a href="/invoices/{{ c.invoice_id }}/pdf" class="text-blue-700 underline">
+      View PDF ({{ "%.2f"|format(c.invoice_total) }} €)
+    </a>
+  </td>
+</tr>
