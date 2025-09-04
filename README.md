@@ -41,40 +41,13 @@ This project demonstrates:
   git clone <your-repo-url>
   cd electric-billing
   ```
-- Create local .env
+- Create local .env.docker file
 
   ```
-  cp .env.example .env
+  cp .env.docker.example .env.docker
   ```
 
-- Install dependencies into a Poetry virtualenv
-  ```
-  poetry install
-  ```
-
-## Run App Locally
-
-- Activate the Poetry shell (optional)
-
-  ```
-  poetry shell
-  ```
-
-- Apply DB migrations
-
-  ```
-  poetry run alembic upgrade head
-  ```
-
-- Start the dev server (reload)
-
-  ```
-  poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-  ```
-
-- Access the app at http://localhost:8000
-
-## Run App Containerized
+## Run App
 
 - Build and Start Containers
 
