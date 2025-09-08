@@ -2,7 +2,6 @@ from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
-from app.config import INVOICES_DIR
 from app.services.pdf import render_invoice_pdf_bytes
 import io
 from app.deps import get_db
@@ -139,11 +138,3 @@ def save_invoice(db, customer_id, ps, pe, total):
     db.commit()
     db.refresh(invoice)
     return invoice.id
-
-
-@router.get("/{invoice_id}/pdf")
-def get_pdf(invoice_id: int):
-    path = INVOICES_DIR / f"{invoice_id}.pdf"
-    if not path.exists():
-        return HTMLResponse("Not found", status_code=404)
-    return StreamingResponse(open(path, "rb"), media_type="application/pdf")

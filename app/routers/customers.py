@@ -6,6 +6,7 @@ from app.db.models import Customer
 from sqlalchemy import select, func
 from app.db.models import ConsumptionRecord
 from sqlalchemy import extract
+from app import config
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -104,13 +105,13 @@ def get_customer_months(customer_id: int):
     """
     try:
         with get_db() as db:
-            # Extract year and month from ts adjusted to Europe/Prague so months
+            # Extract year and month from ts adjusted to configured timezone so months
             # reflect local wall time rather than UTC storage.
-            prague_ts = func.timezone("Europe/Prague", ConsumptionRecord.ts)
+            local_ts = func.timezone(config.TZ, ConsumptionRecord.ts)
             q = (
                 select(
-                    extract("year", prague_ts).label("y"),
-                    extract("month", prague_ts).label("m"),
+                    extract("year", local_ts).label("y"),
+                    extract("month", local_ts).label("m"),
                 )
                 .filter(ConsumptionRecord.customer_id == customer_id)
                 .group_by("y", "m")

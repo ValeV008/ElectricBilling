@@ -4,15 +4,14 @@ from fastapi.templating import Jinja2Templates
 from app.services import billing
 import os
 import uuid
-from pathlib import Path
 from app.db.utils import save_df_to_db
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
-# directory to hold uploaded file bytes between preview -> commit
-TMP_DIR = Path("tmp_uploads")
-TMP_DIR.mkdir(exist_ok=True)
+# in-memory store to hold uploaded file bytes between preview -> commit
+# token -> bytes
+TEMP_UPLOADS = {}
 
 
 def is_hx(request: Request) -> bool:
@@ -38,12 +37,10 @@ async def preview(request: Request, file: UploadFile):
     start = df["Časovna Značka (CEST/CET)"].min()
     end = df["Časovna Značka (CEST/CET)"].max()
     customer = os.path.splitext(file.filename)[0]
-    # Extract customer from file name (without extension)
 
-    # persist raw bytes to a temp file and return a token the client will send to commit()
+    # persist raw bytes in-memory and return a token the client will send to commit()
     token = str(uuid.uuid4())
-    tmp_path = TMP_DIR / token
-    tmp_path.write_bytes(content)
+    TEMP_UPLOADS[token] = content
 
     ctx = {
         "request": request,
@@ -59,23 +56,13 @@ async def preview(request: Request, file: UploadFile):
 
 @router.post("/commit", response_class=HTMLResponse)
 async def commit(request: Request, token: str = Form(...), customer: str = Form(...)):
-    # Look up the previously uploaded bytes by token
-    tmp_path = TMP_DIR / token
-    if not tmp_path.exists():
+    # Look up the previously uploaded bytes by token (in-memory)
+    if token not in TEMP_UPLOADS:
         raise HTTPException(status_code=400, detail="Upload token not found or expired")
+    content = TEMP_UPLOADS.pop(token)
 
-    content = tmp_path.read_bytes()
-
-    # Optionally remove the temp file now that we've read it
-    try:
-        tmp_path.unlink()
-    except Exception:
-        pass
-
-    # Re-parse and persist (this is still a stub for actual persistence)
     try:
         df = billing.parse_csv(content)
-        # TODO: persist `df` into DB or other storage
     except Exception as e:
         raise HTTPException(
             status_code=400, detail=f"Failed to parse uploaded file: {e}"

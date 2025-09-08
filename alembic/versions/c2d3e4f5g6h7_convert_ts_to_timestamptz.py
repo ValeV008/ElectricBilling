@@ -17,13 +17,13 @@ depends_on = None
 
 
 def upgrade():
-    # Interpret existing naive timestamps in ts as Europe/Prague local wall time
+    # Interpret existing naive timestamps in ts as Europe/Ljubljana local wall time
     # and convert them to timestamptz (stored in UTC).
     op.execute(
         """
         ALTER TABLE consumption_records
         ALTER COLUMN ts TYPE timestamptz
-        USING (ts AT TIME ZONE 'Europe/Prague')
+        USING (ts AT TIME ZONE 'Europe/Ljubljana')
         """
     )
 

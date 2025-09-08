@@ -11,6 +11,7 @@ from sqlalchemy import insert
 from datetime import datetime
 from typing import Optional
 import pytz
+from app import config
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 
@@ -34,9 +35,9 @@ def parse_timestamp(value: Optional[str]):
         if getattr(dt, "tzinfo", None) is not None:
             return dt.astimezone(pytz.UTC)
 
-        # If no tzinfo was present, assume local Europe/Prague timezone and
+        # If no tzinfo was present, assume local configured timezone and
         # convert to UTC for canonical storage.
-        tz = pytz.timezone("Europe/Prague")
+        tz = pytz.timezone(config.TZ)
         localized = tz.localize(dt)
         return localized.astimezone(pytz.UTC)
     except Exception:
@@ -46,7 +47,7 @@ def parse_timestamp(value: Optional[str]):
             if ts.tzinfo is not None:
                 return ts.astimezone(pytz.UTC)
             else:
-                tz = pytz.timezone("Europe/Prague")
+                tz = pytz.timezone(config.TZ)
                 localized = tz.localize(ts)
                 return localized.astimezone(pytz.UTC)
         except Exception:
@@ -57,12 +58,12 @@ def ensure_utc(dt):
     """Ensure a datetime is timezone-aware in UTC.
 
     If dt is None, returns None. If dt has tzinfo, convert to UTC.
-    If dt is naive, assume Europe/Prague and convert to UTC.
+    If dt is naive, assume configured local timezone (`app.config.TZ`) and convert to UTC.
     """
     if dt is None:
         return None
     if getattr(dt, "tzinfo", None) is None:
-        tz = pytz.timezone("Europe/Prague")
+        tz = pytz.timezone(config.TZ)
         dt = tz.localize(dt)
     return dt.astimezone(pytz.UTC)
 
