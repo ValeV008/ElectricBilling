@@ -13,6 +13,8 @@ if config.config_file_name is not None:
 # Import your models metadata
 from app.db.base import Base  # noqa
 
+import app.db.models  # noqa
+
 target_metadata = Base.metadata
 
 # NEW: override sqlalchemy.url from env if present

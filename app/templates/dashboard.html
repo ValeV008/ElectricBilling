@@ -2,7 +2,7 @@
 {% block title %}Dashboard{% endblock %}
 {% block content %}
 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-  <div class="p-4 bg-white border rounded">Customers: 2</div>
+  <div class="p-4 bg-white border rounded">Customers: <span id="customers-count" hx-get="/customers/count" hx-trigger="load" hx-swap="innerHTML">…</span></div>
   <div class="p-4 bg-white border rounded">Invoices (demo): 0</div>
   <div class="p-4 bg-white border rounded">Revenue (demo): 0 €</div>
 </div>

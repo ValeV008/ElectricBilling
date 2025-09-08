@@ -2,7 +2,10 @@
 {% block title %}Import CSV{% endblock %}
 {% block content %}
 <form hx-post="/imports/preview" hx-target="#preview" hx-swap="innerHTML" enctype="multipart/form-data" class="space-y-4">
-  <input type="file" name="file" accept=".csv" required class="block">
+  <label class="inline-block px-3 py-2 bg-blue-600 text-white rounded cursor-pointer">
+    Choose CSV
+    <input type="file" name="file" accept=".csv" required class="hidden" />
+  </label>
   <button class="px-3 py-2 bg-blue-600 text-white rounded">Preview</button>
 </form>
 <div id="preview" class="mt-6"></div>
