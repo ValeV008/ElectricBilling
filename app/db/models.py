@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Index
+from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.orm import relationship
 from .base import Base
 
@@ -15,7 +16,9 @@ class ConsumptionRecord(Base):
     customer_id = Column(
         Integer, ForeignKey("customers.id"), index=True, nullable=False
     )
-    ts = Column(DateTime, index=True, nullable=False)  # timestamp
+    ts = Column(
+        TIMESTAMP(timezone=True), index=True, nullable=False
+    )  # timestamp with timezone
     kwh = Column(Float, nullable=False)  # Poraba [kWh]
     price_eur_per_kwh = Column(Float, nullable=False)  # Dinamične Cene [EUR/kWh]
     customer = relationship("Customer")

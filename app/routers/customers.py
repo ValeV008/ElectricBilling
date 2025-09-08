@@ -4,6 +4,8 @@ from fastapi.templating import Jinja2Templates
 from app.deps import get_db
 from app.db.models import Customer
 from sqlalchemy import select, func
+from app.db.models import ConsumptionRecord
+from sqlalchemy import extract
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -18,7 +20,10 @@ def list_customers(request: Request):
     try:
         with get_db() as db:
             customers = db.execute(select(Customer)).scalars().all()
-            customers_data = [{"id": c.id, "name": c.name} for c in customers]
+            customers_data = []
+            for c in customers:
+                months = get_customer_months(c.id)
+                customers_data.append({"id": c.id, "name": c.name, "months": months})
     except Exception:
         customers_data = []
 
@@ -90,6 +95,41 @@ def create_customer(customer_name: str):
     except Exception as e:
         print(f"Exception in create_customer: {e}")
         return None
+
+
+def get_customer_months(customer_id: int):
+    """Return a sorted list of month strings 'YYYY-MM' for which the customer has consumption records.
+
+    Returns an empty list on error or if no records found.
+    """
+    try:
+        with get_db() as db:
+            # Extract year and month from ts adjusted to Europe/Prague so months
+            # reflect local wall time rather than UTC storage.
+            prague_ts = func.timezone("Europe/Prague", ConsumptionRecord.ts)
+            q = (
+                select(
+                    extract("year", prague_ts).label("y"),
+                    extract("month", prague_ts).label("m"),
+                )
+                .filter(ConsumptionRecord.customer_id == customer_id)
+                .group_by("y", "m")
+                .order_by("y", "m")
+            )
+            rows = db.execute(q).all()
+            months = []
+            for y, m in rows:
+                # extract() may return Decimal/float depending on DB driver; convert to int
+                try:
+                    yi = int(y)
+                    mi = int(m)
+                except Exception:
+                    continue
+                months.append(f"{yi:04d}-{mi:02d}")
+            return months
+    except Exception as e:
+        print(f"Exception in get_customer_months: {e}")
+        return []
 
 
 # Route wrappers (call helpers and return PlainTextResponse) --------------------------------

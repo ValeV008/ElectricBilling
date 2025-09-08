@@ -9,11 +9,12 @@ from app.routers.customers import (
 )
 from sqlalchemy import insert
 from datetime import datetime
+from typing import Optional
 import pytz
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 
-def parse_timestamp(value: str):
+def parse_timestamp(value: Optional[str]):
     """Parse timestamps coming from uploaded file. Accepts ISO-like strings with timezone names
     'Časovna Značka (CEST/CET)' may contain values like '2025-09-01 12:00:00 CEST'. We'll try
     common formats and fallback to pandas parsing.
@@ -23,23 +24,47 @@ def parse_timestamp(value: str):
     try:
         # Try pandas first (handles many formats)
         ts = pd.to_datetime(value)
-        if ts.tzinfo is None:
-            # assume local Europe/Prague timezone if no tz info (CEST/CET is central european)
-            tz = pytz.timezone("Europe/Prague")
-            ts = tz.localize(ts)
-        # convert to naive UTC-aware datetime in DB (SQLAlchemy DateTime without timezone)
-        return ts.astimezone(pytz.UTC).replace(tzinfo=None)
+        # convert to python datetime for consistent tzinfo handling
+        try:
+            dt = ts.to_pydatetime()
+        except Exception:
+            dt = ts
+
+        # If the parsed datetime has timezone info, convert to UTC
+        if getattr(dt, "tzinfo", None) is not None:
+            return dt.astimezone(pytz.UTC)
+
+        # If no tzinfo was present, assume local Europe/Prague timezone and
+        # convert to UTC for canonical storage.
+        tz = pytz.timezone("Europe/Prague")
+        localized = tz.localize(dt)
+        return localized.astimezone(pytz.UTC)
     except Exception:
         try:
             # last resort: parse with datetime.fromisoformat
             ts = datetime.fromisoformat(value)
             if ts.tzinfo is not None:
-                return ts.astimezone(pytz.UTC).replace(tzinfo=None)
+                return ts.astimezone(pytz.UTC)
             else:
                 tz = pytz.timezone("Europe/Prague")
-                return tz.localize(ts).astimezone(pytz.UTC).replace(tzinfo=None)
+                localized = tz.localize(ts)
+                return localized.astimezone(pytz.UTC)
         except Exception:
             return None
+
+
+def ensure_utc(dt):
+    """Ensure a datetime is timezone-aware in UTC.
+
+    If dt is None, returns None. If dt has tzinfo, convert to UTC.
+    If dt is naive, assume Europe/Prague and convert to UTC.
+    """
+    if dt is None:
+        return None
+    if getattr(dt, "tzinfo", None) is None:
+        tz = pytz.timezone("Europe/Prague")
+        dt = tz.localize(dt)
+    return dt.astimezone(pytz.UTC)
 
 
 def save_df_to_db(df: pd.DataFrame, customer_name: str):
@@ -63,6 +88,7 @@ def save_df_to_db(df: pd.DataFrame, customer_name: str):
         for record in records:
             ts_raw = record.get("Časovna Značka (CEST/CET)")
             ts = parse_timestamp(ts_raw)
+            ts = ensure_utc(ts)
             kwh = record.get("Poraba [kWh]")
             price = record.get("Dinamične Cene [EUR/kWh]")
 

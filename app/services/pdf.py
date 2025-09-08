@@ -1,13 +1,15 @@
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from weasyprint import HTML
+import os
+
 
 env = Environment(
-    loader=FileSystemLoader("app/invoice_templates"),
-    autoescape=select_autoescape()
+    loader=FileSystemLoader("app/templates"), autoescape=select_autoescape()
 )
 
-def render_invoice_pdf(context: dict, out_path: str):
-    template = env.get_template("invoice.html")
+
+def render_invoice_pdf_bytes(context: dict) -> bytes:
+    """Render invoice template to PDF bytes (no file I/O)."""
+    template = env.get_template("invoices/invoice.html")
     html = template.render(**context)
-    HTML(string=html).write_pdf(out_path)
-    return out_path
+    return HTML(string=html).write_pdf()
