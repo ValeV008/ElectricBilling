@@ -9,13 +9,9 @@ from app.deps import get_db
 from app.db.models import ConsumptionRecord, Invoice, Customer
 from sqlalchemy import select, func
 from datetime import datetime, timezone
-import logging
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
-
-# module logger
-logger = logging.getLogger(__name__)
 
 
 def parse_year_month(year_month: str):
@@ -47,22 +43,7 @@ async def create_invoice(
     year_month: str = Form(...),
 ):
     period_start, period_end = parse_year_month(year_month)
-    logger.debug(
-        "create_invoice called: customer_id=%s year_month=%s -> period_start=%s period_end=%s",
-        customer_id,
-        year_month,
-        period_start,
-        period_end,
-    )
-
-    # Query DB for consumption records in the period and compute total
-    # period_start/period_end are ISO strings; convert to datetimes for DB compare
-    try:
-        ps = datetime.fromisoformat(period_start) if period_start else None
-        pe = datetime.fromisoformat(period_end) if period_end else None
-    except Exception as e:
-        logger.debug("failed to parse period start/end: %s", e)
-        ps = pe = None
+    ps, pe = attach_timezone_to_period(period_start, period_end)
 
     total = 0.0
     customer_name = f"Customer {customer_id}"
@@ -75,75 +56,37 @@ async def create_invoice(
             customer_name = cust.name
 
         if ps and pe:
+            # convert local-aware period boundaries to UTC for DB comparisons
+            try:
+                ps_utc = ps.astimezone(timezone.utc)
+                pe_utc = pe.astimezone(timezone.utc)
+            except Exception:
+                ps_utc = ps
+                pe_utc = pe
+
             q = select(
                 ConsumptionRecord.kwh,
                 ConsumptionRecord.price_eur_per_kwh,
+                ConsumptionRecord.ts,
             ).filter(
                 ConsumptionRecord.customer_id == customer_id,
-                ConsumptionRecord.ts >= ps,
-                ConsumptionRecord.ts < pe,
+                ConsumptionRecord.ts >= ps_utc,
+                ConsumptionRecord.ts < pe_utc,
             )
             rows = db.execute(q).all()
-            logger.debug("consumption rows fetched: %d", len(rows))
-            line_index = 0
-            for kwh, price in rows:
-                line_index += 1
+            for kwh, price, ts in rows:
                 try:
                     kwh_f = float(kwh)
                     price_f = float(price)
                     line_amount = kwh_f * price_f
                     total += line_amount
-                    logger.debug(
-                        "line %d: kwh=%s price=%s line_amount=%s running_total=%s",
-                        line_index,
-                        kwh,
-                        price,
-                        line_amount,
-                        total,
-                    )
-                except Exception as e:
-                    logger.debug(
-                        "skipping row %d due to conversion error: %s (kwh=%r price=%r)",
-                        line_index,
-                        e,
-                        kwh,
-                        price,
-                    )
+                except Exception:
                     continue
 
-        # persist invoice record
-        logger.debug("subtotal before persist: %s", total)
-
-        invoice = Invoice(
-            customer_id=customer_id,
-            period_start=ps or datetime.now(timezone.utc),
-            period_end=pe or datetime.now(timezone.utc),
-            total_eur=total,
-        )
-        db.add(invoice)
-        db.commit()
-        db.refresh(invoice)
-        invoice_id = invoice.id
-        logger.debug(
-            "invoice persisted: id=%s stored_total=%s rounded_display=%s",
-            invoice_id,
-            invoice.total_eur,
-            round(total, 2),
-        )
-        rounded_total = round(total, 2)
-        try:
-            rounding_diff = rounded_total - total
-            logger.debug(
-                "rounding diff: %s (rounded %s - raw %s)",
-                rounding_diff,
-                rounded_total,
-                total,
-            )
-        except Exception:
-            pass
+            invoice_id = save_invoice(db, customer_id, ps, pe, total)
 
     # render PDF bytes and stream them back to the client so the browser opens
-    # the PDF in a new tab (no server-side file required)
+    # the PDF in a new tab
     context = {
         "invoice_number": invoice_id,
         "customer_name": customer_name,
@@ -157,6 +100,45 @@ async def create_invoice(
         media_type="application/pdf",
         headers={"Content-Disposition": f'inline; filename="invoice_{invoice_id}.pdf"'},
     )
+
+
+def attach_timezone_to_period(period_start, period_end):
+    try:
+        # interpret the YYYY-MM timestamps as local (system) timezone-aware datetimes
+        if period_start:
+            naive_ps = datetime.fromisoformat(period_start)
+        else:
+            naive_ps = None
+        if period_end:
+            naive_pe = datetime.fromisoformat(period_end)
+        else:
+            naive_pe = None
+
+        if naive_ps or naive_pe:
+            local_tz = datetime.now().astimezone().tzinfo
+        ps = naive_ps.replace(tzinfo=local_tz) if naive_ps else None
+        pe = naive_pe.replace(tzinfo=local_tz) if naive_pe else None
+    except Exception as e:
+        print(f"failed to parse/attach tz to period start/end: {e}")
+        ps = pe = None
+    return ps, pe
+
+
+def save_invoice(db, customer_id, ps, pe, total):
+    """Persist an Invoice and return invoice_id.
+
+    db: active DB session
+    """
+    invoice = Invoice(
+        customer_id=customer_id,
+        period_start=ps or datetime.now(timezone.utc),
+        period_end=pe or datetime.now(timezone.utc),
+        total_eur=total,
+    )
+    db.add(invoice)
+    db.commit()
+    db.refresh(invoice)
+    return invoice.id
 
 
 @router.get("/{invoice_id}/pdf")
