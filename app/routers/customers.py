@@ -42,37 +42,84 @@ def customers_count():
     return PlainTextResponse(str(total))
 
 
-@router.get("/exists/{customer_name}", response_class=PlainTextResponse)
-def customer_exists_by_name(customer_name: str):
+# Helper functions (return raw Python types) -------------------------------------------------
+
+
+def customer_exists_by_name(customer_name: str) -> bool:
+    """Return True if a customer with given name exists. Pure function usable by other modules."""
+    print(f"Checking if customer exists by name: {customer_name}")
     try:
         with get_db() as db:
             exists = (
-                db.execute(
-                    select(Customer).filter_by(Customer.name == customer_name)
-                ).first()
+                db.execute(select(Customer).filter_by(name=customer_name)).first()
                 is not None
             )
-    except Exception:
+            print(f"Exists: {exists}")
+    except Exception as e:
+        print(f"Exception in customer_exists_by_name: {e}")
         exists = False
-    return PlainTextResponse(exists)
+    return exists
 
 
-@router.get("/{customer_name}", response_class=PlainTextResponse)
-def get_customer_by_name(name: str):
-    with get_db() as db:
-        return db.execute(select(Customer).filter_by(name=name)).scalar_one_or_none()
-
-
-@router.post("/create", response_class=PlainTextResponse)
-def create_customer(name: str) -> PlainTextResponse:
-    if customer_exists_by_name(name):
-        return PlainTextResponse("exists")
+def get_customer_by_name(customer_name: str):
+    """Return customer id if found, else None."""
+    print(f"Getting customer by name: {customer_name}")
     try:
         with get_db() as db:
-            customer = Customer(name=name)
+            customer = db.execute(
+                select(Customer).filter_by(name=customer_name)
+            ).scalar_one_or_none()
+            print(f"Customer: {customer}")
+            return customer.id if customer else None
+    except Exception as e:
+        print(f"Exception in get_customer_by_name: {e}")
+        return None
+
+
+def create_customer(customer_name: str):
+    """Create a customer and return its id, or None on failure."""
+    print(f"Creating customer with name: {customer_name}")
+    try:
+        with get_db() as db:
+            customer = Customer(name=customer_name)
             db.add(customer)
             db.commit()
             db.refresh(customer)
-            return PlainTextResponse(str(customer.id))
-    except Exception:
-        return Exception("Failed to create customer")
+            print(f"Created customer with id: {customer.id}")
+            return customer.id
+    except Exception as e:
+        print(f"Exception in create_customer: {e}")
+        return None
+
+
+# Route wrappers (call helpers and return PlainTextResponse) --------------------------------
+
+
+@router.get("/exists/{customer_name}", response_class=PlainTextResponse)
+def customer_exists_route(customer_name: str):
+    print(f"Route: check if customer exists: {customer_name}")
+    exists = customer_exists_by_name(customer_name)
+    print(f"Route result: {exists}")
+    return PlainTextResponse("1" if exists else "0")
+
+
+@router.get("/{customer_name}", response_class=PlainTextResponse)
+def get_customer_route(customer_name: str):
+    print(f"Route: get customer id by name: {customer_name}")
+    cid = get_customer_by_name(customer_name)
+    print(f"Route result: {cid}")
+    return PlainTextResponse(str(cid) if cid is not None else "")
+
+
+@router.post("/create", response_class=PlainTextResponse)
+def create_customer_route(name: str) -> PlainTextResponse:
+    print(f"Route: create customer with name: {name}")
+    if customer_exists_by_name(name):
+        print("Customer already exists.")
+        return PlainTextResponse("exists")
+    cid = create_customer(name)
+    if cid is None:
+        print("Failed to create customer.")
+        return PlainTextResponse("")
+    print(f"Customer created with id: {cid}")
+    return PlainTextResponse(str(cid))

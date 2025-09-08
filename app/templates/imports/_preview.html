@@ -1,13 +1,13 @@
 <div id="preview" class="p-4 border rounded bg-white">
   <p><b>Customer:</b> {{ customer }}</p>
   <p><b>Rows:</b> {{ rows }}</p>
-  <p><b>Period:</b> {{ start }} – {{ end }}</p>
+  <p><b>Period:</b> {{ start }} - {{ end }}</p>
   <!-- hidden token so commit receives it -->
   <input type="hidden" id="upload-token" name="token" value="{{ token }}">
   <input type="hidden" id="upload-customer" name="customer" value="{{ customer }}">
   <button class="mt-4 px-3 py-2 bg-green-600 text-white rounded"
           hx-post="/imports/commit"
-          hx-include="#upload-token #upload-customer"
+          hx-include="#upload-token, #upload-customer"
           hx-target="#preview"
           hx-swap="outerHTML">Confirm Import</button>
 </div>
