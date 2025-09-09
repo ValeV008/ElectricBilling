@@ -24,7 +24,12 @@ class ConsumptionRecord(Base):
     customer = relationship("Customer")
 
 
-Index("ix_consumption_customer_ts", ConsumptionRecord.customer_id, ConsumptionRecord.ts)
+Index(
+    "ix_consumption_customer_ts",
+    ConsumptionRecord.customer_id,
+    ConsumptionRecord.ts,
+    unique=True,
+)
 
 
 class Invoice(Base):

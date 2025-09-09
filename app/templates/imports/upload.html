@@ -1,12 +1,31 @@
 {% extends "base.html" %}
 {% block title %}Import CSV{% endblock %}
 {% block content %}
-<form hx-post="/imports/preview" hx-target="#preview" hx-swap="innerHTML" enctype="multipart/form-data" class="space-y-4">
-  <label class="inline-block px-3 py-2 bg-blue-600 text-white rounded cursor-pointer">
+<form id="upload-form" hx-post="/imports/preview" hx-target="#preview" hx-swap="innerHTML" enctype="multipart/form-data" class="space-y-4">
+  <label for="file-input" class="inline-block px-3 py-2 bg-blue-600 text-white rounded cursor-pointer">
     Choose CSV
-    <input type="file" name="file" accept=".csv" required class="hidden" />
   </label>
-  <button class="px-3 py-2 bg-blue-600 text-white rounded">Preview</button>
+  <input id="file-input" type="file" name="file" accept=".csv" required class="hidden" />
 </form>
+<script>
+  // Auto-submit the form when a file is selected so user only selects file then sees preview
+  (function() {
+    const input = document.getElementById('file-input');
+    const form = document.getElementById('upload-form');
+    if (!input || !form) return;
+    input.addEventListener('change', function() {
+        // if a file was chosen, submit via HTMX
+        if (input.files && input.files.length > 0) {
+          // Prefer HTMLFormElement.requestSubmit() when available, otherwise
+          // dispatch a bubbling submit event so libraries like HTMX can intercept it.
+          if (typeof form.requestSubmit === 'function') {
+            form.requestSubmit();
+          } else {
+            form.dispatchEvent(new Event('submit', {cancelable: true, bubbles: true}));
+          }
+        }
+      });
+  })();
+</script>
 <div id="preview" class="mt-6"></div>
 {% endblock %}

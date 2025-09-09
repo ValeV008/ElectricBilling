@@ -55,18 +55,25 @@ async def preview(request: Request, file: UploadFile):
 
 
 @router.post("/commit", response_class=HTMLResponse)
-async def commit(request: Request, token: str = Form(...), customer: str = Form(...)):
+async def commit(request: Request):
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid or missing JSON body")
+
+    token = body.get("token")
+    customer = body.get("customer")
+
+    if not token or not customer:
+        raise HTTPException(status_code=400, detail="Missing upload token or customer")
+
     # Look up the previously uploaded bytes by token (in-memory)
     if token not in TEMP_UPLOADS:
         raise HTTPException(status_code=400, detail="Upload token not found or expired")
     content = TEMP_UPLOADS.pop(token)
 
-    try:
-        df = billing.parse_csv(content)
-    except Exception as e:
-        raise HTTPException(
-            status_code=400, detail=f"Failed to parse uploaded file: {e}"
-        )
+    # already validated, no need to try/except
+    df = billing.parse_csv(content)
 
     save_df_to_db(df, customer)
 

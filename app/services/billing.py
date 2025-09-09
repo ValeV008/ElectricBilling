@@ -4,16 +4,33 @@ import pandas as pd
 import os
 
 
+def validate_csv(df: pd.DataFrame) -> bool:
+    """Validate CSV file bytes and return a DataFrame.
+
+    Raises ValueError if validation fails.
+    """
+    if df.empty:
+        return False
+
+    required = ["Časovna Značka (CEST/CET)", "Poraba [kWh]", "Dinamične Cene [EUR/kWh]"]
+    cols_missing = any(r not in df.columns for r in required)
+    if cols_missing:
+        return False
+    if df["Poraba [kWh]"].isnull().any():
+        return False
+    if df["Dinamične Cene [EUR/kWh]"].isnull().any():
+        return False
+    if df["Časovna Značka (CEST/CET)"].isnull().any():
+        return False
+
+    return True
+
+
 def parse_csv(file_bytes: bytes) -> pd.DataFrame:
     df = pd.read_csv(io.BytesIO(file_bytes), sep=";", decimal=",", encoding="utf-8")
-    # Expect columns: timestamp, Poraba [kWh], Dinamične Cene [EUR/kWh], customer_id (or location)
-    # Normalize headers (example)
-    cols = {c.lower().strip(): c for c in df.columns}
-    # Basic validation
-    required = ["časovna značka (cest/cet)", "poraba [kwh]", "dinamične cene [eur/kwh]"]
-    missing = [r for r in required if r not in [c.lower() for c in df.columns]]
-    if missing:
-        raise ValueError(f"Missing columns: {missing}")
+    is_valid = validate_csv(df)
+    if not is_valid:
+        raise ValueError("CSV validation failed")
     return df
 
 

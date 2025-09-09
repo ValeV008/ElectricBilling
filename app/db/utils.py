@@ -113,11 +113,18 @@ def save_df_to_db(df: pd.DataFrame, customer_name: str):
 
         if rows_to_insert:
             stmt = pg_insert(models.ConsumptionRecord).values(rows_to_insert)
-            stmt = stmt.on_conflict_do_nothing(index_elements=["customer_id", "ts"])
+            # On conflict of (customer_id, ts) update the kwh and price to the new values
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["customer_id", "ts"],
+                set_={
+                    "kwh": stmt.excluded.kwh,
+                    "price_eur_per_kwh": stmt.excluded.price_eur_per_kwh,
+                },
+            )
             session.execute(stmt)
             session.commit()
             print(
-                f"Inserted {len(rows_to_insert)} consumption_records for customer {customer_id}"
+                f"Upserted {len(rows_to_insert)} consumption_records for customer {customer_id}"
             )
 
     except Exception:
