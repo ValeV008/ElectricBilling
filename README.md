@@ -28,6 +28,7 @@ This project demonstrates:
 ## Requirements
 
 - Python **3.12**
+- Docker and Docker compose
 
 ## Project Setup
 
