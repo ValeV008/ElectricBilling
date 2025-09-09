@@ -17,22 +17,17 @@ This project demonstrates:
 
 ## Tech Stack
 
-- **Backend**: [FastAPI](https://fastapi.tiangolo.com/)
+- **Backend**: FastAPI
 - **Templating**: Jinja2 + HTMX (dynamic partial updates)
 - **Database**: PostgreSQL + SQLAlchemy ORM
 - **Migrations**: Alembic
 - **PDF Rendering**: WeasyPrint
 - **Frontend styling**: Tailwind CSS
 - **Containerization**: Docker & docker-compose
-- **Dependency management**: Poetry
 
 ## Requirements
 
 - Python **3.12**
-- **Poetry** (dependency & venv manager)
-  ```
-  pip install poetry
-  ```
 
 ## Project Setup
 
