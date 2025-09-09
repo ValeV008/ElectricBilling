@@ -1,14 +1,12 @@
+"""Billing related services."""
+
 from datetime import datetime
 import io
 import pandas as pd
-import os
 
 
 def validate_csv(df: pd.DataFrame) -> bool:
-    """Validate CSV file bytes and return a DataFrame.
-
-    Raises ValueError if validation fails.
-    """
+    """Validate the structure and content of the CSV file."""
     if df.empty:
         return False
 
@@ -27,6 +25,7 @@ def validate_csv(df: pd.DataFrame) -> bool:
 
 
 def parse_csv(file_bytes: bytes) -> pd.DataFrame:
+    """Parse the uploaded CSV file and return a DataFrame."""
     df = pd.read_csv(io.BytesIO(file_bytes), sep=";", decimal=",", encoding="utf-8")
     is_valid = validate_csv(df)
     if not is_valid:
@@ -34,7 +33,8 @@ def parse_csv(file_bytes: bytes) -> pd.DataFrame:
     return df
 
 
-def compute_total(df, start: datetime, end: datetime):
+def compute_total(df, start: datetime, end: datetime) -> tuple[float, int]:
+    """Compute the total cost and number of records in the given date range."""
     mask = (df["timestamp"] >= pd.to_datetime(start)) & (
         df["timestamp"] <= pd.to_datetime(end)
     )

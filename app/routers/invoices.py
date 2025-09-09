@@ -1,3 +1,5 @@
+"""Invoice-related endpoints."""
+
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
@@ -13,11 +15,8 @@ router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 
-def parse_year_month(year_month: str):
-    """Return (period_start_iso, period_end_iso) for a YYYY-MM string.
-
-    If parsing fails return ("", "").
-    """
+def parse_year_month(year_month: str) -> tuple[str, str]:
+    """Parse a "YYYY-MM" string into (period_start, period_end) ISO 8601 strings."""
     try:
         y_str, m_str = year_month.split("-")
         y = int(y_str)
@@ -35,7 +34,10 @@ def parse_year_month(year_month: str):
         return "", ""
 
 
-def attach_timezone_to_period(period_start, period_end):
+def attach_timezone_to_period(
+    period_start, period_end
+) -> tuple[datetime | None, datetime | None]:
+    """Attach local (system) timezone info to the period_start and period_end"""
     try:
         # interpret the YYYY-MM timestamps as local (system) timezone-aware datetimes
         if period_start:
@@ -57,11 +59,8 @@ def attach_timezone_to_period(period_start, period_end):
     return ps, pe
 
 
-def save_invoice(db, customer_id, ps, pe, total):
-    """Persist an Invoice and return invoice_id.
-
-    db: active DB session
-    """
+def save_invoice(db, customer_id, ps, pe, total) -> int:
+    """Save an invoice record to the DB and return its ID."""
     invoice = Invoice(
         customer_id=customer_id,
         period_start=ps or datetime.now(timezone.utc),
@@ -71,7 +70,7 @@ def save_invoice(db, customer_id, ps, pe, total):
     db.add(invoice)
     db.commit()
     db.refresh(invoice)
-    return invoice.id
+    return invoice.id  # type: ignore
 
 
 @router.post("/{customer_id}", response_class=HTMLResponse)
@@ -79,7 +78,8 @@ async def create_invoice(
     request: Request,
     customer_id: int,
     year_month: str = Form(...),
-):
+) -> StreamingResponse:
+    """Create an invoice for the given customer ID and year_month (YYYY-MM)."""
     period_start, period_end = parse_year_month(year_month)
     ps, pe = attach_timezone_to_period(period_start, period_end)
 
@@ -122,8 +122,7 @@ async def create_invoice(
 
             invoice_id = save_invoice(db, customer_id, ps, pe, total)
 
-    # render PDF bytes and stream them back to the client so the browser opens
-    # the PDF in a new tab
+    # render PDF bytes and stream them back to the user
     context = {
         "invoice_number": invoice_id,
         "customer_name": customer_name,
@@ -140,13 +139,8 @@ async def create_invoice(
 
 
 @router.get("/revenue", response_class=HTMLResponse)
-def invoices_revenue(request: Request):
-    """Return an HTML snippet with the revenue (sum of total_eur) computed over
-    unique (customer_id, period_start, period_end) invoice groups.
-
-    This groups existing invoices by the three columns and sums each group,
-    then returns the overall total as a simple HTML string (e.g. "123.45 €").
-    """
+def invoices_revenue(request: Request) -> HTMLResponse:
+    """Return total revenue from all invoices as plain text."""
     total_revenue = 0.0
     with get_db() as db:
         grp = (
@@ -172,6 +166,7 @@ def invoices_revenue(request: Request):
 
 @router.get("/count", response_class=HTMLResponse)
 def invoices_count():
+    """Return total number of invoices as plain text."""
     try:
         with get_db() as db:
             total = db.scalar(select(func.count()).select_from(Invoice)) or 0

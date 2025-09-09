@@ -41,7 +41,6 @@ class Invoice(Base):
     period_start = Column(DateTime, nullable=False)
     period_end = Column(DateTime, nullable=False)
     total_eur = Column(Float, nullable=False)
-    # timestamp when the invoice row was created (timezone-aware)
     created_at = Column(
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )

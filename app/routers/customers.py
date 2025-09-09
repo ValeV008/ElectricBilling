@@ -1,3 +1,5 @@
+"""Customer-related routes and helper functions."""
+
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.templating import Jinja2Templates
@@ -18,7 +20,8 @@ def is_hx(request: Request) -> bool:
 
 
 @router.get("", response_class=HTMLResponse)
-def list_customers(request: Request):
+def list_customers(request: Request) -> HTMLResponse:
+    """List all customers with their consumption months."""
     try:
         with get_db() as db:
             customers = db.execute(select(Customer)).scalars().all()
@@ -41,7 +44,8 @@ def list_customers(request: Request):
 
 
 @router.get("/count", response_class=PlainTextResponse)
-def customers_count():
+def customers_count() -> PlainTextResponse:
+    """Return total number of customers as plain text."""
     try:
         with get_db() as db:
             total = db.scalar(select(func.count()).select_from(Customer)) or 0
@@ -54,7 +58,7 @@ def customers_count():
 
 
 def customer_exists_by_name(customer_name: str) -> bool:
-    """Return True if a customer with given name exists. Pure function usable by other modules."""
+    """Return True if a customer with the given name exists, else False."""
     print(f"Checking if customer exists by name: {customer_name}")
     try:
         with get_db() as db:
@@ -84,7 +88,7 @@ def get_customer_id_by_name(customer_name: str) -> int | None:
         return None
 
 
-def create_customer(customer_name: str):
+def create_customer(customer_name: str) -> int | None:
     """Create a customer and return its id, or None on failure."""
     print(f"Creating customer with name: {customer_name}")
     try:
@@ -94,15 +98,14 @@ def create_customer(customer_name: str):
             db.commit()
             db.refresh(customer)
             print(f"Created customer with id: {customer.id}")
-            return customer.id
+            return customer.id  # type: ignore
     except Exception as e:
         print(f"Exception in create_customer: {e}")
         return None
 
 
-def get_customer_months(customer_id: int):
+def get_customer_months(customer_id: int) -> list[str]:
     """Return a sorted list of month strings 'YYYY-MM' for which the customer has consumption records.
-
     Returns an empty list on error or if no records found.
     """
     try:
@@ -135,11 +138,12 @@ def get_customer_months(customer_id: int):
         return []
 
 
-# Route wrappers (call helpers and return PlainTextResponse) --------------------------------
+# Route wrappers for helper functions
 
 
 @router.get("/exists/{customer_name}", response_class=PlainTextResponse)
-def customer_exists_route(customer_name: str):
+def customer_exists_route(customer_name: str) -> PlainTextResponse:
+    """calls customer_exists_by_name"""
     print(f"Route: check if customer exists: {customer_name}")
     exists = customer_exists_by_name(customer_name)
     print(f"Route result: {exists}")
@@ -147,7 +151,8 @@ def customer_exists_route(customer_name: str):
 
 
 @router.get("/{customer_name}", response_class=PlainTextResponse)
-def get_customer_route(customer_name: str):
+def get_customer_route(customer_name: str) -> PlainTextResponse:
+    """calls get_customer_id_by_name"""
     print(f"Route: get customer id by name: {customer_name}")
     cid = get_customer_id_by_name(customer_name)
     print(f"Route result: {cid}")
@@ -156,6 +161,7 @@ def get_customer_route(customer_name: str):
 
 @router.post("/create", response_class=PlainTextResponse)
 def create_customer_route(name: str) -> PlainTextResponse:
+    """calls create_customer"""
     print(f"Route: create customer with name: {name}")
     if customer_exists_by_name(name):
         print("Customer already exists.")

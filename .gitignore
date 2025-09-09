@@ -1,7 +1,3 @@
-__pycache__/
-.vscode/
 .venv/
-Scripts/
-Lib/
-*.pyc
+.vscode/
 .env.docker

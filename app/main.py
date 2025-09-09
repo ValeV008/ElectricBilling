@@ -4,8 +4,6 @@ from fastapi.templating import Jinja2Templates
 from starlette.staticfiles import StaticFiles
 
 from app.routers import imports, customers, invoices
-from app.deps import get_db
-from app.db.models import Customer
 
 app = FastAPI(title="Electricity Billing")
 app.mount("/static", StaticFiles(directory="app/static"), name="static")

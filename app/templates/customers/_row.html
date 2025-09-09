@@ -35,7 +35,6 @@
             update();
             var form = sel.closest('form');
             if (form) form.addEventListener('submit', function(){
-              // copy selected value into a named input so the form sends it
               var hidden = document.getElementById('billing_year_month_{{ c.id }}');
               if (hidden) hidden.value = (sel.value || '').toString().trim();
             });
