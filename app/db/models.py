@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Index
+from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Index, func
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.orm import relationship
 from .base import Base
@@ -36,3 +36,7 @@ class Invoice(Base):
     period_start = Column(DateTime, nullable=False)
     period_end = Column(DateTime, nullable=False)
     total_eur = Column(Float, nullable=False)
+    # timestamp when the invoice row was created (timezone-aware)
+    created_at = Column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+    )
