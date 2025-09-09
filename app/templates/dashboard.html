@@ -3,7 +3,7 @@
 {% block content %}
 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
   <div class="p-4 bg-white border rounded">Customers: <span id="customers-count" hx-get="/customers/count" hx-trigger="load" hx-swap="innerHTML">…</span></div>
-  <div class="p-4 bg-white border rounded">Invoices (demo): 0</div>
-  <div class="p-4 bg-white border rounded">Revenue (demo): 0 €</div>
+  <div class="p-4 bg-white border rounded">Invoices Generated: <span id="invoices-count" hx-get="/invoices/count" hx-trigger="load" hx-swap="innerHTML">…</span></div>
+  <div class="p-4 bg-white border rounded">Total Revenue: <span id="revenue-count" hx-get="/invoices/revenue" hx-trigger="load" hx-swap="innerHTML">…</span></div>
 </div>
 {% endblock %}

@@ -35,6 +35,45 @@ def parse_year_month(year_month: str):
         return "", ""
 
 
+def attach_timezone_to_period(period_start, period_end):
+    try:
+        # interpret the YYYY-MM timestamps as local (system) timezone-aware datetimes
+        if period_start:
+            naive_ps = datetime.fromisoformat(period_start)
+        else:
+            naive_ps = None
+        if period_end:
+            naive_pe = datetime.fromisoformat(period_end)
+        else:
+            naive_pe = None
+
+        if naive_ps or naive_pe:
+            local_tz = datetime.now().astimezone().tzinfo
+        ps = naive_ps.replace(tzinfo=local_tz) if naive_ps else None
+        pe = naive_pe.replace(tzinfo=local_tz) if naive_pe else None
+    except Exception as e:
+        print(f"failed to parse/attach tz to period start/end: {e}")
+        ps = pe = None
+    return ps, pe
+
+
+def save_invoice(db, customer_id, ps, pe, total):
+    """Persist an Invoice and return invoice_id.
+
+    db: active DB session
+    """
+    invoice = Invoice(
+        customer_id=customer_id,
+        period_start=ps or datetime.now(timezone.utc),
+        period_end=pe or datetime.now(timezone.utc),
+        total_eur=total,
+    )
+    db.add(invoice)
+    db.commit()
+    db.refresh(invoice)
+    return invoice.id
+
+
 @router.post("/{customer_id}", response_class=HTMLResponse)
 async def create_invoice(
     request: Request,
@@ -101,40 +140,43 @@ async def create_invoice(
     )
 
 
-def attach_timezone_to_period(period_start, period_end):
-    try:
-        # interpret the YYYY-MM timestamps as local (system) timezone-aware datetimes
-        if period_start:
-            naive_ps = datetime.fromisoformat(period_start)
-        else:
-            naive_ps = None
-        if period_end:
-            naive_pe = datetime.fromisoformat(period_end)
-        else:
-            naive_pe = None
+@router.get("/revenue", response_class=HTMLResponse)
+def invoices_revenue(request: Request):
+    """Return an HTML snippet with the revenue (sum of total_eur) computed over
+    unique (customer_id, period_start, period_end) invoice groups.
 
-        if naive_ps or naive_pe:
-            local_tz = datetime.now().astimezone().tzinfo
-        ps = naive_ps.replace(tzinfo=local_tz) if naive_ps else None
-        pe = naive_pe.replace(tzinfo=local_tz) if naive_pe else None
-    except Exception as e:
-        print(f"failed to parse/attach tz to period start/end: {e}")
-        ps = pe = None
-    return ps, pe
-
-
-def save_invoice(db, customer_id, ps, pe, total):
-    """Persist an Invoice and return invoice_id.
-
-    db: active DB session
+    This groups existing invoices by the three columns and sums each group,
+    then returns the overall total as a simple HTML string (e.g. "123.45 €").
     """
-    invoice = Invoice(
-        customer_id=customer_id,
-        period_start=ps or datetime.now(timezone.utc),
-        period_end=pe or datetime.now(timezone.utc),
-        total_eur=total,
-    )
-    db.add(invoice)
-    db.commit()
-    db.refresh(invoice)
-    return invoice.id
+    total_revenue = 0.0
+    with get_db() as db:
+        grp = (
+            select(
+                Invoice.customer_id,
+                Invoice.period_start,
+                Invoice.period_end,
+                func.sum(Invoice.total_eur).label("grp_total"),
+            )
+            .group_by(Invoice.customer_id, Invoice.period_start, Invoice.period_end)
+            .subquery()
+        )
+
+        q = select(func.coalesce(func.sum(grp.c.grp_total), 0.0))
+        row = db.execute(q).scalar_one_or_none()
+        try:
+            total_revenue = float(row or 0.0)
+        except Exception:
+            total_revenue = 0.0
+
+    return HTMLResponse(f"{round(total_revenue, 2)} €")
+
+
+@router.get("/count", response_class=HTMLResponse)
+def invoices_count():
+    try:
+        with get_db() as db:
+            total = db.scalar(select(func.count()).select_from(Invoice)) or 0
+    except Exception:
+        total = 0
+    # return plain text number
+    return HTMLResponse(str(total))
