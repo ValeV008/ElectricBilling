@@ -86,7 +86,6 @@ async def create_invoice(
     total = 0.0
     customer_name = f"Customer {customer_id}"
     with get_db() as db:
-        # try to read real customer name
         cust = db.execute(
             select(Customer).filter_by(id=customer_id)
         ).scalar_one_or_none()

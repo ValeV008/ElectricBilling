@@ -3,6 +3,7 @@ from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.templating import Jinja2Templates
 from app.deps import get_db
 from app.db.models import Customer
+from typing import cast
 from sqlalchemy import select, func
 from app.db.models import ConsumptionRecord
 from sqlalchemy import extract
@@ -23,8 +24,9 @@ def list_customers(request: Request):
             customers = db.execute(select(Customer)).scalars().all()
             customers_data = []
             for c in customers:
-                months = get_customer_months(c.id)
-                customers_data.append({"id": c.id, "name": c.name, "months": months})
+                cid = cast(int, c.id)
+                months = get_customer_months(cid)
+                customers_data.append({"id": cid, "name": c.name, "months": months})
     except Exception:
         customers_data = []
 
@@ -48,7 +50,7 @@ def customers_count():
     return PlainTextResponse(str(total))
 
 
-# Helper functions (return raw Python types) -------------------------------------------------
+# Helper functions
 
 
 def customer_exists_by_name(customer_name: str) -> bool:
@@ -67,7 +69,7 @@ def customer_exists_by_name(customer_name: str) -> bool:
     return exists
 
 
-def get_customer_by_name(customer_name: str):
+def get_customer_id_by_name(customer_name: str) -> int | None:
     """Return customer id if found, else None."""
     print(f"Getting customer by name: {customer_name}")
     try:
@@ -76,9 +78,9 @@ def get_customer_by_name(customer_name: str):
                 select(Customer).filter_by(name=customer_name)
             ).scalar_one_or_none()
             print(f"Customer: {customer}")
-            return customer.id if customer else None
+            return cast(int, customer.id) if customer else None
     except Exception as e:
-        print(f"Exception in get_customer_by_name: {e}")
+        print(f"Exception in get_customer_id_by_name: {e}")
         return None
 
 
@@ -147,7 +149,7 @@ def customer_exists_route(customer_name: str):
 @router.get("/{customer_name}", response_class=PlainTextResponse)
 def get_customer_route(customer_name: str):
     print(f"Route: get customer id by name: {customer_name}")
-    cid = get_customer_by_name(customer_name)
+    cid = get_customer_id_by_name(customer_name)
     print(f"Route result: {cid}")
     return PlainTextResponse(str(cid) if cid is not None else "")
 

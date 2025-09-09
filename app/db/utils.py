@@ -1,13 +1,12 @@
-from app.db.session import SessionLocal
 from app.db import models
 import pandas as pd
-import app.routers.customers
+from app.deps import get_db
 from app.routers.customers import (
     customer_exists_by_name,
     create_customer,
-    get_customer_by_name,
+    get_customer_id_by_name,
 )
-from sqlalchemy import insert
+from sqlalchemy import cast, insert
 from datetime import datetime
 from typing import Optional
 import pytz
@@ -69,66 +68,58 @@ def ensure_utc(dt):
 
 
 def save_df_to_db(df: pd.DataFrame, customer_name: str):
-    session = SessionLocal()
-    try:
-        # create or get customer
-        customer_id = None
-        if customer_exists_by_name(customer_name):
-            print(f"Customer '{customer_name}' exists.")
-            customer_id = get_customer_by_name(customer_name)
-        else:
-            print(f"Customer '{customer_name}' does not exist. Creating new customer.")
-            customer_id = create_customer(customer_name)
+    customer_id = None
+    if customer_exists_by_name(customer_name):
+        customer_id = get_customer_id_by_name(customer_name)
+    else:
+        customer_id = create_customer(customer_name)
 
-        if customer_id is None:
-            raise RuntimeError("Failed to determine or create customer")
+    if customer_id is None:
+        raise RuntimeError("Failed to get or create customer")
 
-        # add customer_id to each record
-        records = df.to_dict(orient="records")
-        rows_to_insert = []
-        for record in records:
-            ts_raw = record.get("Časovna Značka (CEST/CET)")
-            ts = parse_timestamp(ts_raw)
-            ts = ensure_utc(ts)
-            kwh = record.get("Poraba [kWh]")
-            price = record.get("Dinamične Cene [EUR/kWh]")
+    # add customer_id to each record
+    records = df.to_dict(orient="records")
 
-            # ensure numeric
-            try:
-                kwh = float(kwh) if kwh is not None and kwh != "" else 0.0
-            except Exception:
-                kwh = 0.0
-            try:
-                price = float(price) if price is not None and price != "" else 0.0
-            except Exception:
-                price = 0.0
+    rows_to_insert = []
+    for record in records:
+        ts_raw = record.get("Časovna Značka (CEST/CET)")
+        ts = parse_timestamp(ts_raw)
+        ts = ensure_utc(ts)
+        kwh = record.get("Poraba [kWh]")
+        price = record.get("Dinamične Cene [EUR/kWh]")
 
-            row = {
-                "customer_id": customer_id,
-                "ts": ts,
-                "kwh": kwh,
-                "price_eur_per_kwh": price,
-            }
-            rows_to_insert.append(row)
+        # ensure numeric
+        try:
+            kwh = float(kwh) if kwh is not None and kwh != "" else 0.0
+        except Exception:
+            kwh = 0.0
+        try:
+            price = float(price) if price is not None and price != "" else 0.0
+        except Exception:
+            price = 0.0
 
-        if rows_to_insert:
-            stmt = pg_insert(models.ConsumptionRecord).values(rows_to_insert)
-            # On conflict of (customer_id, ts) update the kwh and price to the new values
-            stmt = stmt.on_conflict_do_update(
-                index_elements=["customer_id", "ts"],
-                set_={
-                    "kwh": stmt.excluded.kwh,
-                    "price_eur_per_kwh": stmt.excluded.price_eur_per_kwh,
-                },
-            )
-            session.execute(stmt)
-            session.commit()
-            print(
-                f"Upserted {len(rows_to_insert)} consumption_records for customer {customer_id}"
-            )
+        row = {
+            "customer_id": customer_id,
+            "ts": ts,
+            "kwh": kwh,
+            "price_eur_per_kwh": price,
+        }
+        rows_to_insert.append(row)
 
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
+
+def insert_or_update_consumption_records(records: list[dict]):
+    if not records:
+        return
+
+    with get_db() as db:
+        stmt = pg_insert(models.ConsumptionRecord).values(records)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["customer_id", "ts"],
+            set_={
+                "kwh": stmt.excluded.kwh,
+                "price_eur_per_kwh": stmt.excluded.price_eur_per_kwh,
+            },
+        )
+        db.execute(stmt)
+        db.commit()
+        print(f"Upserted {len(records)} consumption_records")
