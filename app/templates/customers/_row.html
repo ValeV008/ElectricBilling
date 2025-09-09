@@ -24,10 +24,10 @@
               var disabled = v.length === 0;
               btn.disabled = disabled;
               if (disabled) {
-                btn.classList.remove('bg-blue-500');
+                btn.classList.remove('bg-blue-500', 'cursor-pointer');
                 btn.classList.add('bg-gray-400', 'cursor-not-allowed');
               } else {
-                btn.classList.add('bg-blue-500');
+                btn.classList.add('bg-blue-500', 'cursor-pointer');
                 btn.classList.remove('bg-gray-400', 'cursor-not-allowed');
               }
             }

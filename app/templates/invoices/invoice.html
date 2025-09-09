@@ -10,15 +10,15 @@
   </style>
 </head>
 <body>
-  <h1>Invoice {{ invoice_number }}</h1>
-  <p><strong>Customer:</strong> {{ customer_name }}</p>
-  <p><strong>Period:</strong> {{ period_start }} – {{ period_end }}</p>
+  <h1>Račun št. {{ invoice_number }}</h1>
+  <p><strong>Stranka:</strong> {{ customer_name }}</p>
+  <p><strong>Obdobje:</strong> {{ period_start }} – {{ period_end }}</p>
   <table>
-    <thead><tr><th>Description</th><th>Total</th></tr></thead>
+    <thead><tr><th>Opis</th><th>Skupaj</th></tr></thead>
     <tbody>
-      <tr><td>Electricity consumption</td><td>{{ "%.2f"|format(total) }} €</td></tr>
+      <tr><td>Poraba električne energije</td><td>{{ "%.2f"|format(total) }} €</td></tr>
     </tbody>
   </table>
-  <p style="margin-top: 16px;">Thank you.</p>
+  <p style="margin-top: 16px;">Hvala.</p>
 </body>
 </html>

@@ -2,7 +2,7 @@
   <p><b>Customer:</b> {{ customer }}</p>
   <p><b>Rows:</b> {{ rows }}</p>
   <p><b>Period:</b> {{ start }} - {{ end }}</p>
-  <button type="button" class="mt-4 px-3 py-2 bg-green-600 text-white rounded"
+  <button type="button" class="mt-4 px-3 py-2 bg-green-600 text-white rounded cursor-pointer"
           hx-post="/imports/commit"
           hx-headers='{"Content-Type": "application/json"}'
           hx-ext="json-enc"
